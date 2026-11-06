@@ -43,6 +43,7 @@
     lock: '<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
     copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.2"/><path d="M15.5 8.5V5.2a1.2 1.2 0 0 0-1.2-1.2H5.2A1.2 1.2 0 0 0 4 5.2v9.1a1.2 1.2 0 0 0 1.2 1.2h3.3"/>',
     ext: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
     download: '<path d="M12 4v11"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
     trash: '<path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 13h9l1-13"/>',
     sell: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3-8.7 8.7z"/><circle cx="8" cy="8" r="1.4"/>',
@@ -155,7 +156,8 @@
   }
 
   // ---------- 공통 조각 ----------
-  const flowbar = (title, backHref, meta) => `<div class="flowbar"><a class="iconbtn" href="${backHref}" aria-label="뒤로">${icon('back', 'var(--ink)', 24, 2)}</a><span class="t">${esc(title)}</span><span class="m">${esc(meta || '')}</span></div>`;
+  // 위쪽 막대: 뒤로 · 제목(+ 단계) · 물건 고치기
+  const flowbar = (title, backHref, meta, editId) => `<div class="flowbar"><a class="iconbtn" href="${backHref}" data-back="${backHref}" aria-label="뒤로">${icon('back', 'var(--ink)', 24, 2)}</a><span class="t">${esc(title)}${meta ? ` <small class="step">${esc(meta)}</small>` : ''}</span>${editId ? `<a class="iconbtn" href="#/item/${editId}/edit" aria-label="물건 정보 고치기">${icon('edit', 'var(--ink-2)', 20)}</a>` : '<span class="m"></span>'}</div>`;
   function tabbar() { return ''; }   // 탭 바는 index.html의 #tabdock 하나를 계속 써요 (setDock)
   function oldTabbar(cur) {
     const t = (h, n, l) => `<a href="${h}"${cur === h ? ' aria-current="page"' : ''}>${icon(n, cur === h ? 'var(--accent-ink)' : 'var(--ink-3)', 22, cur === h ? 2 : 1.8)}${l}</a>`;
@@ -176,23 +178,22 @@
   let startForm = { reason: 'move', deadline: U.addDays(TODAY, 27), noDate: false };
   function vStart() {
     const f = startForm, dl = f.noDate ? null : f.deadline;
-    const opts = ST.REASONS.map(r => `<button type="button" class="choice" data-reason="${r.key}"${pressed(f.reason === r.key)}>${icon(r.key, 'currentColor')}<span class="grow">${r.label}</span>${radioMark()}</button>`).join('');
+    // 이유 5개는 2열 칩 (마지막 '그냥 정리할래요'는 한 줄 전체)
+    const opts = ST.REASONS.map(r => `<button type="button" class="choice chip2${r.key === 'just' ? ' wide' : ''}" data-reason="${r.key}"${pressed(f.reason === r.key)}>${icon(r.key, 'currentColor', 20)}<span class="grow">${r.label.replace(' · ', '·')}</span></button>`).join('');
     const dn = dl ? U.diffDays(TODAY, dl) : null;
     return { cls: 'flow', html: `
-      <div class="pad grow" data-pt="48">
-        <div class="brand">${LOGO}<b>실마리</b></div>
-        <p class="eyebrow">팔고 싶지만 어디서부터 시작할지 모를 때</p>
-        <h1 class="big">어떤 정리를<br>앞두고 있어요?</h1>
-        <div class="choices" data-mt="24">${opts}</div>
+      <div class="pad grow" data-pt="14">
+        <div class="starthead"><div class="brand">${LOGO}<b>실마리</b></div><button type="button" class="textbtn" data-act="demo">예시 정리 보기</button></div>
+        <h1 class="big" data-mt="18">어떤 정리를 앞두고 있어요?</h1>
+        <div class="chipgrid" data-mt="16">${opts}</div>
         <p class="label">언제까지 정리해야 해요?</p>
-        ${f.noDate ? '' : `<label class="datebtn">${icon('cal', 'var(--ink-2)', 20)}<span class="grow">${U.fmtMD(f.deadline).replace(/^(\d+)월/, (m) => m)}</span><span class="chipD">${dn === 0 ? '오늘' : 'D-' + dn}</span>
+        ${f.noDate ? '' : `<label class="datebtn">${icon('cal', 'var(--ink-2)', 20)}<span class="grow">${U.fmtMD(f.deadline)}</span><span class="chipD">${dn === 0 ? '오늘' : 'D-' + dn}</span>
           <input type="date" id="deadline" min="${TODAY}" value="${f.deadline}" aria-label="정리 마감 날짜"></label>`}
         ${f.reason === 'just' ? `<label class="check"><input type="checkbox" id="nodate"${f.noDate ? ' checked' : ''}> 날짜는 정하지 않을래요 (계획 없이 길만 정해요)</label>` : ''}
       </div>
       <div class="bottom">
-        <p class="note">${icon('lock', 'var(--ink-3)', 16)}<span>가입 없이 시작해요. 정리 목록은 이 기기에만 저장돼요.</span></p>
         <button type="button" class="btn" data-act="start">정리 시작하기</button>
-        <button type="button" class="textbtn center gray" data-act="demo">예시 정리 보기</button>
+        <p class="note center">${icon('lock', 'var(--ink-3)', 14)}<span>가입 없이 시작해요 · 이 기기에만 저장돼요</span></p>
       </div>`,
       after() {
         $$('[data-reason]').forEach(b => b.onclick = () => { startForm.reason = b.dataset.reason; if (startForm.reason !== 'just') startForm.noDate = false; render(true); });
@@ -223,11 +224,13 @@
     if (dl != null && dl < 0) top += `<p class="band warn">마감이 지났어요.<button type="button" class="textbtn" data-act="go-settings">날짜 바꾸기</button><button type="button" class="textbtn" data-act="finish">정리 끝내기</button></p>`;
     else if (dl != null && dl < C.SHORT_DAYS) top += `<p class="band warn">마감까지 ${dl}일 — 덜 귀찮은 길 위주로 계획을 줄였어요</p>`;
 
-    const dayBlock = p.deadline
-      ? `<p class="sub" data-mt="10">${esc(untilLine(p))}</p><div class="dday">${dl > 0 ? `<b>${dl}일</b><span>남았어요</span>` : dl === 0 ? '<b>오늘</b><span>이에요</span>' : `<b>${-dl}일</b><span>지났어요</span>`}</div>`
-      : `<p class="sub" data-mt="10">마감 없이 정리해요</p><div class="dday"><b>${pr.total}개</b><span>정리할 물건</span></div>`;
+    // D-day와 진행 막대를 한 카드로 (세로 공간을 줄여요)
+    const dayBlock = `<section class="card daycard" data-mt="8" aria-label="남은 날과 진행">
+      <div class="dayrow">${p.deadline
+        ? `<div class="dday">${dl > 0 ? `<b>${dl}일</b><span>남았어요</span>` : dl === 0 ? '<b>오늘</b><span>이에요</span>' : `<b>${-dl}일</b><span>지났어요</span>`}</div><span class="small">${esc(untilLine(p))}</span>`
+        : `<div class="dday"><b>${pr.total}개</b><span>정리할 물건</span></div><span class="small">마감 없이 정리해요</span>`}</div>`;
     const progressLine = `<div class="bar"><i data-w="${pr.total ? (pr.finished / pr.total) * 100 : 0}"></i></div>
-      <div class="barline"><span>${pr.total && remain > 0 && remain <= 2 ? `${remain}개만 더 하면 끝나요` : `${pr.total}개 중 ${pr.finished}개 정리했어요`}</span><span>길을 정한 물건 ${pr.routed}개</span></div>`;
+      <div class="barline"><span>${pr.total && remain > 0 && remain <= 2 ? `${remain}개만 더 하면 끝나요` : `${pr.total}개 중 ${pr.finished}개 정리했어요`}</span><span>길을 정한 물건 ${pr.routed}개</span></div></section>`;
 
     let body;
     if (!pr.total) {
@@ -298,9 +301,13 @@
     let body;
     if (!p.deadline) body = '<div class="card" data-mt="16"><p class="small">마감 날짜가 없어서 계획을 짜지 않았어요. 설정에서 날짜를 넣으면 거꾸로 계획을 짜 드려요.</p></div>';
     else {
-      const groups = [];
-      p.tasks.forEach(t => { const g = groups[groups.length - 1]; if (g && g.date === t.date) g.tasks.push(t); else groups.push({ date: t.date, tasks: [t] }); });
-      body = `<section class="card" aria-label="날짜별 할 일" data-mt="16" data-pt="18">${groups.map((g, gi) => {
+      const all = [];
+      p.tasks.forEach(t => { const g = all[all.length - 1]; if (g && g.date === t.date) g.tasks.push(t); else all.push({ date: t.date, tasks: [t] }); });
+      // 지난 날짜는 "지난 일 n개" 한 줄로 접어 두고, 열면 '오늘'부터 보여요
+      const past = all.filter(g => g.date < TODAY), groups = view.showPast ? all : all.filter(g => g.date >= TODAY);
+      const pastCount = past.reduce((a, g) => a + g.tasks.length, 0);
+      body = `${pastCount ? `<button type="button" class="pastrow" data-mt="12" aria-expanded="${!!view.showPast}" data-act="toggle-past">${icon('check', 'var(--ink-3)', 16, 2.2)}<span class="grow">지난 일 ${pastCount}개${past.every(g => g.tasks.every(t => t.done)) ? ' · 모두 끝냄' : ''}</span>${icon('down', 'var(--ink-3)', 18, 2)}</button>` : ''}
+      <section class="card" aria-label="날짜별 할 일" data-mt="${pastCount ? 8 : 16}" data-pt="18">${groups.map((g, gi) => {
         const isDl = g.tasks.some(t => t.kind === 'deadline');
         const allDone = g.tasks.every(t => t.done);
         const isToday = g.date === TODAY;
@@ -402,13 +409,15 @@
       const ok = a.name.trim() && a.category && (a.category !== 'electronics' || a.subtype);
       return { cls: 'flow', html: `${flowbar('물건 추가', '#/home', '1/2')}<div class="pad grow">
         <h1 class="mid">어떤 물건이에요?</h1>
-        <label class="field"><span>물건 이름</span><input class="input" id="a-name" value="${esc(a.name)}" placeholder="예: 블루투스 스피커" autocomplete="off" enterkeyhint="next"></label>
-        <p class="label">종류</p><div class="pills">${P.CATEGORIES.map(c => `<button type="button" class="pill" data-cat="${c.key}"${pressed(a.category === c.key)}>${c.label}</button>`).join('')}</div>
+        <p class="label" data-mt="12">종류</p><div class="pills">${P.CATEGORIES.map(c => `<button type="button" class="pill" data-cat="${c.key}"${pressed(a.category === c.key)}>${c.label}</button>`).join('')}</div>
         ${a.category === 'electronics' ? `<p class="label">어떤 전자기기예요?</p><div class="pills">${P.SUBTYPES.map(s => `<button type="button" class="pill" data-sub="${s.key}"${pressed(a.subtype === s.key)}>${s.label}</button>`).join('')}</div>` : ''}
+        <label class="field"><span>물건 이름</span><input class="input" id="a-name" value="${esc(a.name)}" placeholder="예: 블루투스 스피커" autocomplete="off" enterkeyhint="next"></label>
       </div><div class="bottom"><button type="button" class="btn" data-act="add-next"${ok ? '' : ' disabled'}>다음</button></div>`,
       after() {
-        const n = $('#a-name'); n.oninput = () => { a.name = n.value; $('[data-act="add-next"]').disabled = !(a.name.trim() && a.category && (a.category !== 'electronics' || a.subtype)); };
-        if (!a.name) n.focus();
+        // 키보드를 먼저 띄우지 않아요 (종류를 먼저 고르고, 이름은 그다음에)
+        const okNow = () => !!(a.name.trim() && a.category && (a.category !== 'electronics' || a.subtype));
+        const n = $('#a-name'); n.oninput = () => { a.name = n.value; $('[data-act="add-next"]').disabled = !okNow(); };
+        n.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); if (okNow()) go('#/add/2'); else n.blur(); } };
         $$('[data-cat]').forEach(b => b.onclick = () => { a.category = b.dataset.cat; if (a.category !== 'electronics') a.subtype = null; a.hasBattery = false; render(true); });
         $$('[data-sub]').forEach(b => b.onclick = () => { a.subtype = b.dataset.sub; a.hasBattery = ['smartphone', 'tablet', 'laptop'].includes(a.subtype); render(true); });
       } };
@@ -439,19 +448,26 @@
   // ======================================================================
   // A5 어디로 보낼까요
   // ======================================================================
-  function routeCard(r, it, flags, sel, rec) {
+  // 길 카드: 추천 1장만 자세히, 나머지는 한 줄짜리 (화면 하나에 다 보이게)
+  function routeInfo(r, it) {
     const c = priceOf(it), dl = daysLeft(proj());
-    const head = `<div class="hd">${ricon(r, 's36')}<b>${rlabel(r)}</b>${rec ? '<span class="chip round c-today" data-px="10">추천</span>' : ''}</div>`;
+    return {
+      sell:    { amt: c ? `추천 ${P.won(c.low).replace('원', '')} ~ ${P.won(c.high)}` : '살 때 가격을 넣으면 계산해 드려요', short: c ? `${P.won(c.low).replace('원', '')}원~` : '가격 계산', meta: '할 일 4개 · 팔릴 때까지 · 직거래나 택배' },
+      buyback: { amt: '금액은 매입 업체 견적으로 확인해요', short: '견적 확인', meta: '할 일 2개 · 견적 72시간 안 · 만남 없음' },
+      consign: { amt: '팔리면 정산돼요 · 금액은 그곳에서 확인', short: '팔리면 정산', meta: '할 일 2개 · 담아서 내놓기 · 만남 없음' },
+      pickup:  { amt: '보상은 그곳에서 확인해요', short: '그곳에서 확인', meta: '할 일 2개 · 문 앞 수거 · 만남 없음' },
+      give:    { amt: '0원', short: '0원', meta: `할 일 2개 · ${dl != null && dl <= C.GIVE_DAY ? '바로 올려요' : '오늘도 가능해요'}` },
+      dispose: { amt: '수수료는 사는 곳 기준으로 확인해요', short: '수수료 확인', meta: '할 일 2개 · 신청하고 내놓기' }
+    }[r];
+  }
+  function routeCard(r, it, flags, sel, rec) {
+    const info = routeInfo(r, it);
     const fl = (flags[r] || []).map(f => `<span class="chip c-warn">${esc(f)}</span>`).join('');
-    let mid = '';
-    if (r === 'sell') mid = `<p class="amt">${c ? `추천 ${P.won(c.low).replace('원', '')} ~ ${P.won(c.high)}` : '살 때 가격을 넣으면 계산해 드려요'}</p><p class="meta">할 일 4개 · 팔릴 때까지 · 직거래나 택배</p>`;
-    if (r === 'buyback') mid = `<p class="amt">금액은 매입 업체 견적으로 확인해요</p><div class="grid3"><div><p>할 일</p><p>2개</p></div><div><p>견적</p><p>72시간 안</p></div><div><p>만남</p><p>없어요</p></div></div><p class="tiny" data-mt="10">견적 시간은 번개견적 안내 기준이에요. 조건은 각 서비스에서 확인해요.</p>`;
-    if (r === 'consign') mid = '<p class="amt">팔리면 정산돼요 · 금액은 그곳에서 확인해요</p><p class="meta">할 일 2개 · 담아서 내놓기 · 만남 없어요</p>';
-    if (r === 'pickup') mid = '<p class="amt">보상은 그곳에서 확인해요</p><p class="meta">할 일 2개 · 문 앞 수거 · 만남 없어요</p>';
-    if (r === 'give') mid = `<p class="meta" data-mt="8">할 일 2개 · ${dl != null && dl <= C.GIVE_DAY ? '바로 올려요' : '오늘도 가능해요'}</p>`;
-    if (r === 'dispose') mid = '<p class="amt">수수료는 사는 곳 기준으로 확인해요</p><p class="meta">할 일 2개 · 신청하고 내놓기</p>';
-    const amtRight = r === 'give' ? '<span data-strong="1">0원</span>' : '';
-    return `<button type="button" class="rcard" data-route="${r}"${pressed(sel)}>${head.replace('</b>', '</b>' + amtRight)}${mid}${fl ? `<div class="flags">${fl}</div>` : ''}</button>`;
+    if (rec) {
+      return `<button type="button" class="rcard" data-route="${r}"${pressed(sel)}><div class="hd">${ricon(r, 's36')}<b>${rlabel(r)}</b><span class="chip round c-today" data-px="10">추천</span></div>
+        <p class="amt">${esc(info.amt)}</p><p class="meta">${esc(info.meta)}</p>${fl ? `<div class="flags">${fl}</div>` : ''}</button>`;
+    }
+    return `<button type="button" class="rcard mini" data-route="${r}"${pressed(sel)}>${ricon(r, 's36')}<span class="grow"><b>${rlabel(r)}</b><span class="meta">${esc(info.meta.split(' · ').slice(0, 2).join(' · '))}</span></span>${fl ? fl : `<span class="mini-amt">${esc(info.short)}</span>`}</button>`;
   }
   function vRoute(id) {
     const it = itemById(id), p = proj(); if (!it) return null;
@@ -460,14 +476,13 @@
     const sg = RT.suggest(it, pref, dl, c ? c.low : null);
     const list = view.showAll ? sg.routes.concat(RT.ALL.filter(r => !sg.routes.includes(r))) : sg.routes;
     const sel = view.sel && list.includes(view.sel) ? view.sel : (it.route && list.includes(it.route) ? it.route : list[0]);
-    return { cls: 'flow', html: `${flowbar(it.name, it.route ? '#/item/' + it.id : '#/home')}<div class="pad grow">
+    return { cls: 'flow', html: `${flowbar(it.name, it.route ? '#/item/' + it.id : '#/home', '', it.id)}<div class="pad grow">
       <h1 class="mid">어디로 보낼까요?</h1>
       <p class="sub">${dl != null ? `${ST.reasonOf(p.reason).until} ${dl}일 · ` : ''}${pref === 'more' ? '더 받을 수 있는 길을 먼저 보여 드려요' : '덜 귀찮은 길을 먼저 보여 드려요'}</p>
-      <div class="seg" data-mt="16">${segThumb}<button type="button" data-p="easy"${pressed(pref === 'easy')}>덜 귀찮게</button><button type="button" data-p="more"${pressed(pref === 'more')}>더 받기</button></div>
-      <div data-mt="6">${list.map((r, i) => routeCard(r, it, sg.flags, r === sel, i === 0)).join('')}</div>
-      <button type="button" class="disclose" data-mt="8" aria-expanded="${view.why}" data-act="why">왜 이 순서일까요?${icon('down', 'var(--ink-3)', 18, 2)}</button>
-      ${view.why ? `<p class="why">${esc(sg.why)}</p>` : ''}
-      <div class="row2" data-mt="4">${view.showAll ? '<span></span>' : '<button type="button" class="textbtn gray" data-act="all">다른 길 보기</button>'}<button type="button" class="textbtn gray" data-act="keep">계속 쓸게요</button></div>
+      <div class="seg" data-mt="12">${segThumb}<button type="button" data-p="easy"${pressed(pref === 'easy')}>덜 귀찮게</button><button type="button" data-p="more"${pressed(pref === 'more')}>더 받기</button></div>
+      <div data-mt="4">${list.map((r, i) => routeCard(r, it, sg.flags, r === sel, i === 0)).join('')}</div>
+      <div class="linkrow" data-mt="6"><button type="button" class="textbtn gray" aria-expanded="${view.why}" data-act="why">왜 이 순서일까요?</button><span class="grow"></span>${view.showAll ? '' : '<button type="button" class="textbtn gray" data-act="all">다른 길 보기</button>'}<button type="button" class="textbtn gray" data-act="keep">계속 쓸게요</button></div>
+      ${view.why ? `<p class="why">${esc(sg.why)}${list.includes('buyback') ? ' 견적 시간은 번개견적 안내 기준이고, 조건은 각 서비스에서 확인해요.' : ''}</p>` : ''}
     </div><div class="bottom"><button type="button" class="btn" data-act="choose" data-r="${sel}">${J.ro(rlabel(sel))} 정하기</button></div>`,
     after() {
       $$('[data-p]').forEach(b => b.onclick = () => { view.pref = b.dataset.p; view.sel = null; render(true); });
@@ -488,29 +503,52 @@
   // ======================================================================
   // R1 직접 팔기 — 질문 → 왜 이 가격? + 시세 → 판매글 + 가격 계획
   // ======================================================================
-  function sellQuestions(it) {
-    if (!it.trade) it.trade = (data.settings && data.settings.lastTrade) || 'both';
-    const ok = P.canPrice(it) && (!it.hasBattery || it.battery);
+  // 직접 팔기 질문은 한 장에 2개씩: ① 살 때 가격 + 산 지 ② 구성품 + 거래 방식 ③ 배터리 + 모델명 (전자기기만)
+  const DEVICE = ['smartphone', 'tablet', 'laptop'];
+  const sellSteps = it => (it.category === 'electronics' ? 3 : 2);
+  function sellQuestions(it, step) {
+    step = step || 1;
+    if (!it.trade) it.trade = (data.settings && data.settings.lastTrade) || 'both';   // 두 번째 물건부터는 지난번 답으로
+    if (DEVICE.includes(it.subtype)) it.hasBattery = true;                             // 폰·태블릿·노트북은 배터리 여부를 묻지 않아요
+    const n = sellSteps(it), base = '#/item/' + it.id + '/sell';
     const opt = (key, list, cur) => `<div class="pills">${list.map(o => `<button type="button" class="pill" data-k="${key}" data-v="${o.key}"${pressed(cur === o.key)}>${o.label}</button>`).join('')}</div>`;
-    const isElec = it.category === 'electronics';
-    return { cls: 'flow', html: `${flowbar(it.name, '#/item/' + it.id + '/route')}<div class="pad grow" data-pb="8">
-      <h1 class="mid">언제, 얼마에 샀어요?</h1><p class="sub">정확하지 않아도 돼요. 대략이면 충분해요.</p>
-      <label class="field"><span>살 때 가격 (원)</span><input class="input num" id="q-price" inputmode="numeric" value="${it.purchasePrice ? Number(it.purchasePrice).toLocaleString('ko-KR') : ''}" placeholder="예: 59,000" autocomplete="off"></label>
-      <p class="tiny" data-mt="6">기억이 안 나면 지금 파는 새 제품 가격을 적어도 돼요.</p>
-      <p class="label">산 지 얼마나 됐어요?</p>${opt('ageBucket', P.AGES, it.ageBucket)}
-      <p class="label">구성품</p>${opt('components', P.COMPONENTS, it.components)}
-      ${isElec ? `<p class="label">배터리가 있는 물건인가요?</p><div class="pills"><button type="button" class="pill" data-bat="yes"${pressed(it.hasBattery)}>네</button><button type="button" class="pill" data-bat="no"${pressed(!it.hasBattery && it.batteryAsked)}>아니요</button></div>
-        ${it.hasBattery ? `<p class="label">배터리 상태</p>${opt('battery', P.BATTERY, it.battery)}` : ''}` : ''}
-      <p class="label">거래 방식</p>${opt('trade', P.TRADES, it.trade)}
-      <label class="field"><span>모델명 (선택)</span><input class="input" id="q-model" value="${esc(it.model || '')}" placeholder="예: JBL Flip 5" autocomplete="off"></label>
-      <p class="tiny" data-mt="6">시세를 찾을 때 검색어로 써요.</p>
-    </div><div class="bottom"><button type="button" class="btn" data-act="to-price"${ok ? '' : ' disabled'}>가격 보기</button></div>`,
+    const back = step === 1 ? '#/item/' + it.id + '/route' : base + (step === 2 ? '' : '/2');
+    const next = step < n ? base + '/' + (step + 1) : base + '/price';
+    let html = '', ok = true;
+    if (step === 1) {
+      ok = P.toInt(it.purchasePrice) > 0 && !!it.ageBucket;
+      html = `<h1 class="mid">언제, 얼마에 샀어요?</h1><p class="sub">정확하지 않아도 돼요. 대략이면 충분해요.</p>
+        <label class="field"><span>살 때 가격 (원)</span><input class="input num" id="q-price" inputmode="numeric" enterkeyhint="done" value="${it.purchasePrice ? Number(it.purchasePrice).toLocaleString('ko-KR') : ''}" placeholder="예: 59,000" autocomplete="off"></label>
+        <p class="tiny" data-mt="6">기억이 안 나면 지금 파는 새 제품 가격을 적어도 돼요.</p>
+        <p class="label">산 지 얼마나 됐어요?</p>${opt('ageBucket', P.AGES, it.ageBucket)}`;
+    } else if (step === 2) {
+      ok = !!it.components && !!it.trade;
+      html = `<h1 class="mid">구성품이랑 거래 방식은요?</h1>
+        <p class="label">구성품</p>${opt('components', P.COMPONENTS, it.components)}
+        <p class="label">거래 방식</p>${opt('trade', P.TRADES, it.trade)}
+        ${n === 2 ? `<label class="field compact"><span>모델명·브랜드 (선택, 시세 검색어로 써요)</span><input class="input" id="q-model" value="${esc(it.model || '')}" placeholder="예: 노스페이스 눕시" autocomplete="off"></label>` : ''}`;
+    } else {
+      const device = DEVICE.includes(it.subtype);
+      ok = !it.hasBattery || !!it.battery;
+      html = `<h1 class="mid">${device ? '배터리는 어때요?' : '배터리가 있는 물건인가요?'}</h1>
+        ${device ? '<p class="sub">설정 → 배터리에서 볼 수 있어요.</p>' : `<div class="pills" data-mt="12"><button type="button" class="pill" data-bat="yes"${pressed(it.hasBattery)}>네</button><button type="button" class="pill" data-bat="no"${pressed(!it.hasBattery && it.batteryAsked)}>아니요</button></div>`}
+        ${it.hasBattery ? `<p class="label">배터리 상태</p>${opt('battery', P.BATTERY, it.battery)}` : ''}
+        <label class="field"><span>모델명 (선택)</span><input class="input" id="q-model" value="${esc(it.model || '')}" placeholder="예: JBL Flip 5" autocomplete="off"></label>
+        <p class="tiny" data-mt="6">시세를 찾을 때 검색어로 써요.</p>`;
+    }
+    return { cls: 'flow', html: `${flowbar(it.name, back, step + '/' + n, it.id)}<div class="pad grow" data-pb="8">${html}</div>
+      <div class="bottom"><button type="button" class="btn" data-go="${next}"${ok ? '' : ' disabled'}>${step < n ? '다음' : '가격 보기'}</button></div>`,
     after() {
+      const btn = $('[data-go]');
+      const sync = () => { btn.disabled = step === 1 ? !(P.toInt(it.purchasePrice) > 0 && it.ageBucket) : step === 2 ? !(it.components && it.trade) : !(!it.hasBattery || it.battery); };
       const pr = $('#q-price');
-      const sync = () => { $('[data-act="to-price"]').disabled = !(P.canPrice(it) && (!it.hasBattery || it.battery)); };
-      pr.oninput = () => { it.purchasePrice = P.toInt(pr.value) || null; sync(); };
-      pr.onblur = () => { if (it.purchasePrice) pr.value = Number(it.purchasePrice).toLocaleString('ko-KR'); persist(); };
-      $('#q-model').oninput = e => { it.model = e.target.value.trim() || null; };
+      if (pr) {
+        pr.oninput = () => { it.purchasePrice = P.toInt(pr.value) || null; sync(); };
+        pr.onblur = () => { if (it.purchasePrice) pr.value = Number(it.purchasePrice).toLocaleString('ko-KR'); persist(); };
+        pr.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); pr.blur(); } };
+      }
+      const md = $('#q-model'); if (md) md.oninput = e => { it.model = e.target.value.trim() || null; persist(); };
+      btn.onclick = () => { if (!btn.disabled) { persist(); go(btn.dataset.go); } };
       $$('[data-k]').forEach(b => b.onclick = () => { it[b.dataset.k] = b.dataset.v; if (b.dataset.k === 'trade' && !demo) data.settings.lastTrade = b.dataset.v; persist(); render(true); });
       $$('[data-bat]').forEach(b => b.onclick = () => { it.hasBattery = b.dataset.bat === 'yes'; it.batteryAsked = true; if (!it.hasBattery) it.battery = null; persist(); render(true); });
     } };
@@ -539,27 +577,27 @@
     const mp = (it.marketPrices || []).filter(x => x > 0);
     const cmp = P.compare(mp, c.low, c.high);
     const q = `${(it.model || it.name)} 중고`;
-    return { cls: 'flow', html: `${flowbar(it.name, '#/item/' + it.id + '/sell')}<div class="pad grow" data-pb="8">
-      <p class="sub" data-mt="6" data-strong5="1">직접 팔기 · 추천 가격</p>
+    const lastQ = '#/item/' + it.id + '/sell' + (sellSteps(it) > 1 ? '/' + sellSteps(it) : '');
+    const marketOpen = mp.length || view.addingMarket;
+    return { cls: 'flow', html: `${flowbar(it.name, lastQ, '', it.id)}<div class="pad grow" data-pb="8">
+      <p class="sub" data-mt="2" data-strong5="1">직접 팔기 · 추천 가격</p>
       <p class="price-big">${P.won(c.low).replace('원', '')} ~ ${P.won(c.high)}</p>
-      <section class="card gray" aria-label="왜 이 가격일까요" data-mt="18">
-        <h2 class="sec">왜 이 가격일까요?</h2>
-        <p class="small" data-mt="2" data-mb="6">살 때 ${P.won(c.purchase)}에 아래 비율을 차례로 곱했어요</p>
-        ${c.steps.map(s => `<div class="steprow"><span>${esc(s.label)}</span><b>× ${P.pct(s.ratio)}</b></div>`).join('')}
-        <div class="sumrow"><b>가운데 약 ${P.won(c.midRounded)}</b><span class="small">앞뒤 10%씩</span></div>
-        <p class="tiny" data-mt="10">이 비율은 실마리가 정한 대략적인 기준이에요. 실제 시세와 다를 수 있어요.</p>
+      <label class="pricerow"><span>올릴 가격</span><input class="input num" id="final" inputmode="numeric" enterkeyhint="done" value="${Number(it.finalPrice).toLocaleString('ko-KR')}" autocomplete="off" aria-label="올릴 가격 (원)"><span>원</span></label>
+      <section class="card gray fold" aria-label="왜 이 가격일까요" data-mt="12">
+        <button type="button" class="foldhead" aria-expanded="${!!view.whyPrice}" data-act="why-price"><span class="grow"><b>왜 이 가격일까요?</b><span class="small" data-block="1">${P.won(c.purchase)} × 비율 ${c.steps.length}가지 → 약 ${P.won(c.midRounded)}</span></span>${icon('down', 'var(--ink-3)', 18, 2)}</button>
+        ${view.whyPrice ? `<div data-mt="6">${c.steps.map(s => `<div class="steprow"><span>${esc(s.label)}</span><b>× ${P.pct(s.ratio)}</b></div>`).join('')}
+          <div class="sumrow"><b>가운데 약 ${P.won(c.midRounded)}</b><span class="small">앞뒤 10%씩</span></div></div>` : ''}
+        <p class="tiny" data-mt="4">실마리가 정한 대략적인 기준이에요. 실제 시세와 다를 수 있어요.</p>
       </section>
-      <section class="card lined" aria-label="내가 찾은 시세" data-mt="12" data-pt="8">
-        <div class="hd2"><h2 class="sec">내가 찾은 시세</h2>${mp.length < 3 ? '<button type="button" class="textbtn" data-act="add-market">+ 추가</button>' : ''}</div>
-        ${mp.length ? `<div class="mchips">${mp.map((v, i) => `<span class="mchip">${P.won(v)}<button type="button" data-rm="${i}" aria-label="${P.won(v)} 지우기">${icon('x', 'currentColor', 14, 2.2)}</button></span>`).join('')}</div>` : '<p class="small" data-mt="0">당근 같은 곳에서 비슷한 물건 가격을 찾아 1~3개 적어 보세요. 건너뛰어도 돼요.</p>'}
-        ${view.addingMarket ? `<div class="addrow"><input class="input num" id="m-in" inputmode="numeric" placeholder="예: 25,000" aria-label="찾은 시세 (원)" autocomplete="off"><button type="button" class="btn" data-act="market-save">넣기</button></div>` : ''}
-        ${cmp ? marketChart(c, mp) + `<p class="infobox">${esc(cmp.text)}${cmp.extra.map(e => '<br>' + esc(e)).join('')}</p>` : ''}
-        <button type="button" class="disclose" aria-expanded="${!!view.tips}" data-act="tips">시세 찾는 요령${icon('down', 'var(--ink-3)', 18, 2)}</button>
-        ${view.tips ? `<ol class="tips"><li>같은 모델, 비슷한 상태의 물건을 골라요.</li><li>업자 글보다 개인이 올린 글을 봐요.</li><li>가능하면 거래가 끝난 글의 가격을 적어요.</li></ol>
+      ${marketOpen ? `<section class="card lined" aria-label="내가 찾은 시세" data-mt="10" data-pt="8">
+        <div class="hd2"><h2 class="sec">내가 찾은 시세${cmp ? ` · 가운데 ${P.won(Math.round(cmp.mid))}` : ''}</h2><button type="button" class="textbtn gray" aria-expanded="${!!view.tips}" data-act="tips">${view.tips ? '접기' : '자세히'}</button></div>
+        <div class="mchips">${mp.map((v, i) => `<span class="mchip">${P.won(v)}<button type="button" data-rm="${i}" aria-label="${P.won(v)} 지우기">${icon('x', 'currentColor', 14, 2.2)}</button></span>`).join('')}${mp.length < 3 && !view.addingMarket ? '<button type="button" class="mchip add" data-act="add-market">+ 추가</button>' : ''}</div>
+        ${view.addingMarket ? `<div class="addrow"><input class="input num" id="m-in" inputmode="numeric" enterkeyhint="done" placeholder="예: 25,000" aria-label="찾은 시세 (원)" autocomplete="off"><button type="button" class="btn" data-act="market-save">넣기</button></div>` : ''}
+        ${cmp ? `<p class="infobox">${esc(cmp.text)}${cmp.extra.map(e => ' ' + esc(e)).join('')} 올릴 가격은 저절로 바뀌지 않아요.</p>` : ''}
+        ${view.tips ? `${cmp ? marketChart(c, mp) : ''}<ol class="tips"><li>같은 모델, 비슷한 상태의 물건을 골라요.</li><li>업자 글보다 개인이 올린 글을 봐요.</li><li>가능하면 거래가 끝난 글의 가격을 적어요.</li></ol>
           <button type="button" class="btn soft" data-mt="10" data-act="copy-q">${icon('copy', 'var(--ink)', 16)}검색어 복사 · ${esc(q)}</button>` : ''}
-      </section>
-      <label class="field"><span>올릴 가격 (원)</span><input class="input num" id="final" inputmode="numeric" value="${Number(it.finalPrice).toLocaleString('ko-KR')}" autocomplete="off"></label>
-      <p class="tiny" data-mt="6">처음 값은 추천 범위의 가운데예요. 시세를 적어도 저절로 바뀌지 않아요.</p>
+      </section>` : `<button type="button" class="btn soft wide" data-mt="10" data-act="add-market">${icon('plus', 'var(--ink)', 16, 2)}시세 적기 <span class="small">· 비슷한 물건 가격 1~3개 (건너뛰어도 돼요)</span></button>
+      <p class="tiny" data-mt="8">시세를 적어도 올릴 가격은 저절로 바뀌지 않아요.</p>`}
     </div><div class="bottom"><button type="button" class="btn" data-act="to-draft">${P.won(it.finalPrice)}으로 판매글 만들기</button></div>`,
     after() {
       const f = $('#final');
@@ -589,7 +627,7 @@
         <div class="plrow"><i data-bg="var(--give-ic)"></i><span class="grow">${U.fmtMD(sw.date).replace(/ \(.\)$/, '')}에도 남으면</span><b>${RT.isBuybackable(it) ? '매입·나눔으로' : '나눔으로'}</b></div>
         <p class="tiny" data-mt="6">안 팔렸을 때만 하는 제안이에요. 바꾸기 전에 물어볼게요.</p></section>` : '';
     const doing = it.state === 'doing';
-    return { cls: 'flow', html: `${flowbar(it.name, '#/item/' + it.id + '/sell/price')}<div class="pad grow" data-pb="24">
+    return { cls: 'flow', html: `${flowbar(it.name, '#/item/' + it.id + '/sell/price', '', it.id)}<div class="pad grow" data-pb="24">
       <div class="brand" data-gap="10" data-mt="4"><span class="okmark">${icon('check', 'var(--accent)', 18, 2.6)}</span><h1 class="sm">${doing ? `${P.won(it.finalPrice)}에 올렸어요` : '판매글이 준비됐어요'}</h1></div>
       <p class="sub" data-mt="8">${doing ? '팔리면 아래 [팔았어요]를 눌러 주세요.' : '복사해서 쓰는 중고거래 앱에 붙여 넣으면 돼요.'}</p>
       ${mp.length ? `<p class="band info">적어 둔 시세 ${mp.map(v => v.toLocaleString('ko-KR')).join(' · ')}원 (가운데 ${P.won(Math.round(P.marketMid(mp)))})</p>` : ''}
@@ -617,16 +655,19 @@
   // ======================================================================
   function vGo(it) {
     const r = it.route, p = proj();
+    view.goExtra = '';
     const svc = (SERVICES[r] || []).filter(s => !s.only || s.only.includes(it.subtype));
-    const svcHtml = svc.map(s => `<div class="svc"><div class="hd"><b>${esc(s.name)}</b><a class="open" href="${s.url}" target="_blank" rel="noopener noreferrer">열기${icon('ext', 'var(--ink)', 14)}</a></div><p>${esc(s.desc)}</p>${s.src ? `<p class="tiny">${esc(s.src)}</p>` : ''}</div>`).join('');
-    const checked = svc.length ? `<p class="tiny" data-mt="8">링크 확인 ${U.fmtMD(C.LINKS_CHECKED)}. 조건은 바뀔 수 있어서 그곳에서 확인해요. 링크에는 물건 정보를 싣지 않아요.</p>` : '';
+    // 연결 서비스: 첫 번째만 펼치고 나머지는 한 줄 (누르면 펼쳐요)
+    const openIdx = view.svcOpen == null ? 0 : view.svcOpen;
+    const svcHtml = svc.map((s, i) => `<div class="svc${i === openIdx ? '' : ' closed'}"><div class="hd">${i === openIdx ? `<b>${esc(s.name)}</b>` : `<button type="button" class="svc-toggle" data-svc="${i}" aria-expanded="false"><b>${esc(s.name)}</b><span class="small">· 설명 보기</span></button>`}<a class="open" href="${s.url}" target="_blank" rel="noopener noreferrer">열기${icon('ext', 'var(--ink)', 14)}</a></div>${i === openIdx ? `<p>${esc(s.desc)}</p>${s.src ? `<p class="tiny">${esc(s.src)}</p>` : ''}` : ''}</div>`).join('');
+    const checked = svc.length ? `<p class="tiny" data-mt="8">링크 확인 ${U.fmtMD(C.LINKS_CHECKED)} · 조건은 그곳에서 확인해요 · 링크에 물건 정보를 싣지 않아요</p>` : '';
     const nextT = p.tasks.find(t => t.itemId === it.id && !t.done);
     const when = nextT ? `<p class="small" data-mt="10">계획: ${U.fmtMD(nextT.date)} · ${esc(taskText(nextT, it))}</p>` : '';
     const st = it.state;
     let title, intro, steps = '', body = '', actions = '';
     if (r === 'buyback') {
       title = '바로 매입'; intro = '사진과 상태를 보내면 견적이 와요. 금액은 매입 업체 견적으로 확인해요.';
-      steps = `<div class="steps2"><div class="${st === 'todo' ? 'on' : ''}"><b>① 견적 신청</b>${st !== 'todo' ? '했어요' : '할 일'}</div><div class="${st === 'doing' ? 'on' : ''}"><b>② 물건 보내기</b>${it.quoteAt ? '견적 받음' : '견적 받은 뒤'}</div></div>`;
+      steps = `<p class="stepline" data-mt="10"><span class="${st === 'todo' ? 'on' : 'past'}">① 견적 신청</span><span class="arrow">→</span><span class="${st === 'doing' ? 'on' : ''}">② 물건 보내기</span></p>`;
       if (!svc.length) body = '<p class="band gray">이 물건은 연결해 둔 매입 서비스의 품목이 아니에요. 다른 길도 살펴보세요.</p>';
       actions = st === 'todo' ? '<button type="button" class="btn" data-act="applied">신청했어요</button>'
         : st === 'doing' ? `<div class="row2">${it.quoteAt ? '<span></span>' : '<button type="button" class="btn line" data-act="quote">견적 받았어요</button>'}<button type="button" class="btn" data-act="sold">팔았어요</button></div>` : '';
@@ -645,32 +686,58 @@
       if (!it.draft.edited || !it.draft.body || it.draft.kind !== 'give') { it.draft = { title: g.title, body: g.body, edited: false, byAI: false, kind: 'give' }; }
       body = `<p class="label">받는 방법</p><div class="pills">${P.TRADES.map(o => `<button type="button" class="pill" data-trade="${o.key}"${pressed(it.trade === o.key)}>${o.label}</button>`).join('')}</div>
         <section class="draftbox" aria-label="나눔 글"><div class="hd"><span class="tiny" data-strong="1">제목</span><button type="button" class="textbtn" data-act="copy-draft">${icon('copy', 'var(--accent)', 16)} 복사</button></div>
-        <p class="ttl">${esc(it.draft.title)}</p><textarea class="input" id="g-body" aria-label="나눔 글 본문" data-minh="180">${esc(it.draft.body)}</textarea></section>
-        ${st === 'todo' && !it.giveNow ? '<button type="button" class="textbtn" data-act="give-now">오늘 올릴래요</button>' : ''}`;
+        <p class="ttl">${esc(it.draft.title)}</p><textarea class="input" id="g-body" aria-label="나눔 글 본문" rows="4">${esc(it.draft.body)}</textarea></section>
+`;
+      if (st === 'todo' && !it.giveNow) view.goExtra = '<button type="button" class="textbtn" data-act="give-now">오늘 올릴래요</button>';
       actions = st === 'todo' ? '<button type="button" class="btn" data-act="applied">올렸어요</button>' : st === 'doing' ? '<button type="button" class="btn" data-act="handed">전달했어요</button>' : '';
     }
     if (r === 'keep') { title = '계속 쓰기'; intro = '이 물건은 계속 쓰기로 했어요.'; }
     const doneMsg = st === 'done' ? `<div class="status">${{ give: '전달했어요', buyback: '팔았어요' }[r] || '신청했어요'} · ${it.doneAt ? U.fmtMD(it.doneAt) : ''}</div>` : st === 'doing' && r === 'give' ? '<div class="status">나눔 글을 올렸어요</div>' : st === 'doing' && r === 'buyback' ? `<div class="status">${it.quoteAt ? '견적을 받았어요. 물건을 보내 주세요.' : '견적을 기다리는 중이에요'}</div>` : '';
-    return { cls: 'flow', html: `${flowbar(it.name, '#/home')}<div class="pad grow" data-pb="8">
+    return { cls: 'flow', html: `${flowbar(it.name, '#/home', '', it.id)}<div class="pad grow" data-pb="8">
       <h1 class="mid">${esc(title)}</h1><p class="sub">${esc(intro)}</p>
-      ${r !== 'keep' && r !== 'give' ? `<p class="small" data-mt="8">할 일 ${RT.ROUTES[r].tasks}개${r === 'buyback' ? ' · 견적 72시간 안 · 만남 없어요' : ''}</p>` : ''}
+      ${r !== 'keep' && r !== 'give' && r !== 'buyback' ? `<p class="small" data-mt="8">할 일 ${RT.ROUTES[r].tasks}개</p>` : ''}
       ${steps}${doneMsg}${body}${svcHtml}${checked}${st !== 'done' ? when : ''}
       ${view.soldOpen ? `<div class="addrow"><input class="input num" id="sold-amt" inputmode="numeric" placeholder="받은 금액 (선택)" aria-label="받은 금액 (선택)"><button type="button" class="btn" data-act="sold-save">끝내기</button></div>` : ''}
-      <button type="button" class="textbtn center gray" data-mt="8" data-act="reroute">다른 길로 바꾸기</button>
+      <div class="linkrow" data-mt="4">${view.goExtra || ''}<span class="grow"></span><button type="button" class="textbtn gray" data-act="reroute">다른 길로 바꾸기</button></div>
     </div>${actions ? `<div class="bottom">${actions}</div>` : ''}`,
     after() {
       $$('[data-trade]').forEach(b => b.onclick = () => { it.trade = b.dataset.trade; if (!demo) data.settings.lastTrade = it.trade; it.draft.edited = false; persist(); render(true); });
       const gb = $('#g-body'); if (gb) gb.oninput = () => { it.draft.body = gb.value; it.draft.edited = true; persist(); };
       const po = $('#putout'); if (po) po.onchange = () => { it.putOut = po.value || null; persist(); };
+      $$('[data-svc]').forEach(b => b.onclick = () => { view.svcOpen = +b.dataset.svc; render(true); });
+    } };
+  }
+
+  // ---------- 물건 고치기·지우기 ----------
+  function vEdit(it) {
+    if (!view.editBuf || view.editBuf.id !== it.id) view.editBuf = { id: it.id, name: it.name, category: it.category, subtype: it.subtype, usage: it.usage, defect: it.defect, defectNote: it.defectNote || '' };
+    const b = view.editBuf, names = P.namesFor(b.category);
+    const pills = (key, list, cur) => `<div class="pills">${list.map(([k, l]) => `<button type="button" class="pill" data-e="${key}" data-v="${k}"${pressed(cur === k)}>${l}</button>`).join('')}</div>`;
+    return { cls: 'flow', html: `${flowbar('물건 정보 고치기', '#/item/' + it.id)}<div class="pad grow" data-pb="8">
+      <label class="field compact"><span>물건 이름</span><input class="input" id="e-name" value="${esc(b.name)}" autocomplete="off" enterkeyhint="done"></label>
+      <p class="label">종류</p>${pills('category', P.CATEGORIES.map(c => [c.key, c.label]), b.category)}
+      ${b.category === 'electronics' ? `<p class="label">어떤 전자기기예요?</p>${pills('subtype', P.SUBTYPES.map(s => [s.key, s.label]), b.subtype)}` : ''}
+      <p class="label">사용 정도</p>${pills('usage', P.USAGE_KEYS.map((k, i) => [k, names.usage[i]]), b.usage)}
+      <p class="label">흠이나 하자</p>${pills('defect', P.DEFECT_KEYS.map((k, i) => [k, names.defect[i]]), b.defect)}
+      <button type="button" class="textbtn" data-mt="10" data-act="del-item"><span class="danger-text">${icon('trash', 'currentColor', 16)} 이 물건 지우기</span></button>
+    </div><div class="bottom"><button type="button" class="btn" data-act="save-edit">저장하기</button></div>`,
+    after() {
+      const n = $('#e-name'); n.oninput = () => { b.name = n.value; };
+      n.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); n.blur(); } };
+      $$('[data-e]').forEach(x => x.onclick = () => { b[x.dataset.e] = x.dataset.v; if (x.dataset.e === 'category' && b.category !== 'electronics') b.subtype = null; render(true); });
     } };
   }
 
   // ---------- 물건 화면 고르기 ----------
   function vItem(id, sub) {
     const it = itemById(id); if (!it) return null;
+    if (sub === 'edit') return vEdit(it);
     if (sub === 'route' || !it.route) return vRoute(id);
     if (it.route === 'sell') {
-      if (sub === 'sell') return sellQuestions(it);
+      if (sub === 'edit') return vEdit(it);
+      if (sub === 'sell') return sellQuestions(it, 1);
+      if (sub === 'sell/2') return sellQuestions(it, 2);
+      if (sub === 'sell/3' && sellSteps(it) >= 3) return sellQuestions(it, 3);
       if (sub === 'sell/price') return sellPrice(it);
       if (sub === 'sell/draft' || it.state !== 'todo') return sellDraft(it);
       // 주소를 정확한 단계로 맞춰요 (답하는 도중에 다음 화면으로 넘어가지 않게)
@@ -711,6 +778,24 @@
     'add-market'() { view.addingMarket = true; render(true); },
     'market-save'() { const it = currentItem(), v = P.toInt($('#m-in').value); if (v) { it.marketPrices = (it.marketPrices || []).concat(v).slice(0, 3); persist(); } view.addingMarket = false; render(true); },
     tips() { view.tips = !view.tips; render(true); },
+    'why-price'() { view.whyPrice = !view.whyPrice; render(true); },
+    'toggle-past'() { view.showPast = !view.showPast; render(true); },
+    'save-edit'() {
+      const it = currentItem(), b = view.editBuf; if (!it || !b) return;
+      if (!b.name.trim()) { toast('물건 이름을 적어 주세요'); return; }
+      if (b.category === 'electronics' && !b.subtype) { toast('어떤 전자기기인지 골라 주세요'); return; }
+      change(() => {
+        Object.assign(it, { name: b.name.trim(), category: b.category, subtype: b.subtype, usage: b.usage, defect: b.defect });
+        if (DEVICE.includes(it.subtype)) it.hasBattery = true;
+        if (it.draft && !it.draft.edited) it.draft.body = '';                 // 고친 정보로 글을 다시 만들어요
+      }, '물건 정보를 고쳤어요');
+      view.editBuf = null; go('#/item/' + it.id);
+    },
+    'del-item'() {
+      const it = currentItem(), p = proj(); if (!it) return;
+      change(() => { p.items = p.items.filter(i => i !== it); p.tasks = p.tasks.filter(t => t.itemId !== it.id); }, `${it.name} 지웠어요`);
+      view.editBuf = null; go('#/home');
+    },
     'copy-q'() { const it = currentItem(); copy(`${it.model || it.name} 중고`, '검색어를 복사했어요. 쓰는 중고거래 앱에서 찾아보세요.'); },
     'to-draft'() { const it = currentItem(), v = P.toInt($('#final').value); if (!v) return; it.finalPrice = v; ensureDraft(it); persist(); go('#/item/' + it.id + '/sell/draft'); },
     'edit-draft'() { view.editDraft = !view.editDraft; render(true); },
@@ -766,6 +851,11 @@
     if (p && !demo && p.items.length && p.items.every(PL.isFinished) && !p.celebrated && h === '#/home') { p.celebrated = true; persist(); return go('#/done'); }
     const dm = h.match(/^#\/demo(\/.*)?$/);                                      // 허브의 [예시 정리 보기]
     if (dm) { demo = ST.example(TODAY); return location.replace('#' + (dm[1] || '/home')); }
+    // 다른 화면(다른 물건)으로 넘어가면 화면 상태를 먼저 비워요 (새 화면이 만든 상태는 지우지 않게)
+    if (!keep && h !== lastHash) {
+      if (!/^#\/item\//.test(h) || h.split('/')[2] !== (lastHash.split('/')[2])) view = { pref: null };
+      if (!/^#\/add/.test(h)) addDraft = null;
+    }
     if (h === '#/' || h === '#/start') v = p && h !== '#/start' ? vHome() : vStart();
     else if (h === '#/home') v = vHome();
     else if (h === '#/plan') v = vPlan();
@@ -800,15 +890,11 @@
       document.documentElement.dataset.dir = dir;
       let done = false;
       const once = () => { if (!done) { done = true; paint(); } };
-      try { document.startViewTransition(once); } catch (e) { once(); }   // 이전 화면과 새 화면이 부드럽게 겹쳐 넘어가요
+      try { const vt = document.startViewTransition(once); [vt.ready, vt.finished, vt.updateCallbackDone].forEach(pr => pr && pr.catch(() => {})); } catch (e) { once(); }   // 이전 화면과 새 화면이 부드럽게 겹쳐 넘어가요
       setTimeout(once, 400);                                   // 전환이 안 되면 0.4초 뒤에라도 꼭 그려요
     } else {
       paint();
       if (navigating && !reduceMotion()) { root.classList.remove('anim-fwd', 'anim-back', 'anim-fade'); void root.offsetWidth; root.classList.add('anim-' + dir); }
-    }
-    if (navigating) {
-      if (!/^#\/item\//.test(h) || h.split('/')[2] !== (lastHash.split('/')[2])) view = { pref: null };
-      if (!/^#\/add/.test(h)) addDraft = null;
     }
     lastHash = h;
     document.title = '실마리';
@@ -874,7 +960,23 @@
     const db = e.target.closest && e.target.closest('[data-pick]');
     if (db) { const i = document.getElementById(db.dataset.pick); if (i) { try { i.showPicker(); } catch (err) { i.focus(); } } }
   });
-  window.addEventListener('hashchange', () => render());
+  // 뒤로 가기: 앱 안 [뒤로]도 휴대폰 뒤로 가기와 같게 (방금 온 화면이면 기록을 되감아요)
+  const navStack = [location.hash || '#/'];
+  window.addEventListener('hashchange', () => {
+    const h = location.hash || '#/';
+    if (navStack.length > 1 && navStack[navStack.length - 2] === h) navStack.pop(); else navStack.push(h);
+    if (navStack.length > 50) navStack.shift();
+    render();
+  });
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a[data-back]');
+    if (a && navStack.length > 1 && navStack[navStack.length - 2] === a.getAttribute('data-back')) { e.preventDefault(); history.back(); }
+  });
+  // 키보드가 열려 있으면 아래 버튼을 키보드 바로 위에 붙여요
+  if (window.visualViewport) {
+    const kb = () => { const v = window.visualViewport; const h = Math.max(0, Math.round(window.innerHeight - v.height - v.offsetTop)); document.documentElement.style.setProperty('--kb', h + 'px'); };
+    visualViewport.addEventListener('resize', kb); visualViewport.addEventListener('scroll', kb); kb();
+  }
   applyTheme();
   replan();
   render();

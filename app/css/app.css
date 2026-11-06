@@ -464,3 +464,98 @@ html[data-dir="fwd"]::view-transition-new(root), html[data-dir="back"]::view-tra
   box-shadow: 0 0 0 .5px var(--glass-edge), 0 10px 30px rgba(16,20,16,.14), 0 1px 0 rgba(255,255,255,.35) inset; margin-right: -2px; }
 .fab svg { width: 24px; height: 24px; }
 .fab:hover { color: var(--accent-ink); }
+
+/* ================= 스크롤 줄이기 (16번 문서, 11/6 밤) ================= */
+/* 아래 고정 영역은 불투명: 내용이 그 뒤로 비치지 않아요. 키보드가 열리면 키보드 위에 붙어요 */
+.bottom { background: var(--surface); bottom: var(--kb, 0px); padding-top: 10px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); box-shadow: 0 -1px 0 var(--line-soft); }
+.view.tab .bottom { background: var(--bg); }
+.note.center { justify-content: center; margin: 8px 0 0; font-size: 12px; }
+.flowbar .step { font-size: 12px; font-weight: 500; color: var(--ink-3); margin-left: 4px; }
+.field.compact { margin-top: 14px; }
+.field.compact > span { font-size: 13px; margin-bottom: 6px; }
+.label { margin: 18px 0 8px; }
+h1.mid { font-size: 24px; margin: 2px 0 4px; }
+
+/* 정리 시작 */
+.starthead { display: flex; align-items: center; justify-content: space-between; }
+h1.big { font-size: 25px; line-height: 1.34; }
+.chipgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.choice.chip2 { min-height: 50px; padding: 0 12px; gap: 8px; font-size: 15px; border-radius: 14px; }
+.choice.chip2[aria-pressed="true"] { padding: 0 12px; }
+.choice.chip2.wide { grid-column: 1 / -1; }
+
+/* 왜 이 가격 */
+.price-big { font-size: 30px; }
+.pricerow { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 0 14px; min-height: 52px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.pricerow span:first-child { font-size: 14px; font-weight: 500; color: var(--ink-2); flex: none; }
+.pricerow .input { flex: 1; border: none; height: 50px; padding: 0; text-align: right; font-size: 18px; font-weight: 700; background: transparent; }
+.pricerow .input:focus { border: none; padding: 0; }
+.pricerow:focus-within { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.card.fold { padding: 4px 16px 12px; }
+.foldhead { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 52px; border: none; background: none; padding: 6px 0; text-align: left; color: var(--ink); }
+.foldhead b { font-size: 15px; }
+.foldhead[aria-expanded="true"] svg { transform: rotate(180deg); }
+.foldhead svg { transition: transform .22s ease; flex: none; }
+.btn.soft.wide { width: 100%; height: auto; min-height: 52px; justify-content: flex-start; padding: 8px 14px; text-align: left; gap: 8px; flex-wrap: wrap; }
+
+/* 어디로 보낼까요 */
+.rcard { margin-top: 8px; padding: 14px 16px; }
+.rcard[aria-pressed="true"] { padding: 14px 16px; }
+.rcard .amt { margin: 10px 0 0; }
+.rcard.mini { display: flex; align-items: center; gap: 12px; min-height: 62px; padding: 10px 14px; }
+.rcard.mini[aria-pressed="true"] { padding: 10px 14px; }
+.rcard.mini .grow { min-width: 0; }
+.rcard.mini b { display: block; font-size: 16px; }
+.rcard.mini .meta { display: block; margin: 1px 0 0; font-size: 12.5px; }
+.mini-amt { font-size: 13px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+.linkrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.linkrow .textbtn { font-size: 13px; }
+
+/* 길 안내 */
+.stepline { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 14px; color: var(--ink-3); }
+.stepline .on { color: var(--accent-ink); font-weight: 700; background: var(--accent-sel); padding: 4px 10px; border-radius: 999px; }
+.stepline .past { text-decoration: line-through; }
+.svc { padding: 12px 14px; margin-top: 8px; }
+.svc.closed { padding: 6px 6px 6px 14px; }
+.svc-toggle { flex: 1; display: flex; align-items: center; gap: 6px; min-height: 44px; border: none; background: none; padding: 0; text-align: left; color: var(--ink); }
+.svc-toggle b { font-size: 16px; }
+.svc .open { height: 44px; }
+
+/* 홈 */
+.daycard { padding: 14px 16px 12px; }
+.dayrow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.daycard .dday b { font-size: 40px; }
+.daycard .bar { margin-top: 10px; }
+.view.tab { padding-bottom: 104px; }
+
+/* 계획 */
+.pastrow { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px; border: none; border-radius: 16px; background: var(--surface); color: var(--ink-2); font-size: 14px; font-weight: 500; text-align: left; }
+.pastrow[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
+
+/* 완료 동그라미와 줄 사이 간격 (실수로 누르지 않게) */
+.task .circle { margin-right: -4px; }
+.task .rowlink { border-left: 1px solid var(--line-soft); padding-left: 12px; }
+
+.danger-text { color: #DC2626; display: inline-flex; align-items: center; gap: 6px; }
+.mchip.add { border: 1px dashed var(--info-dot); background: transparent; color: var(--info-ink); padding: 0 12px; height: 32px; font-weight: 500; position: relative; }
+.mchip.add::after { content: ''; position: absolute; inset: -6px; }
+.mchips { margin-top: 2px; }
+.infobox { margin-top: 10px; }
+.draftbox { margin-top: 12px; }
+.draftbox textarea.input { min-height: 118px; }
+@media (max-height: 700px) {
+  .draftbox textarea.input { min-height: 92px; }
+  .price-big { font-size: 28px; }
+  .foldhead { min-height: 48px; }
+}
+@media (max-height: 700px) {
+  .pricerow { margin-top: 8px; min-height: 48px; }
+  .pricerow .input { height: 46px; }
+  .card.fold { margin-top: 10px !important; padding-bottom: 10px; }
+}
+@media (max-height: 660px) {
+  .draftbox textarea.input { min-height: 80px; }
+  .draftbox .ttl { margin-bottom: 6px; }
+  h1.mid { font-size: 22px; }
+}
+@media (max-height: 660px) { .draftbox { padding-bottom: 12px; } }
