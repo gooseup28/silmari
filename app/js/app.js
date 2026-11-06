@@ -795,9 +795,13 @@
       }
     };
     // 탭끼리(정리·계획·기록)는 기다림 없이 바로 바꾸고 살짝만 나타나게 해요. 화면 전환 효과는 물건 화면을 오갈 때만 써요.
-    if (navigating && dir !== 'fade' && document.startViewTransition && !reduceMotion()) {
+    // 처음 열 때나 창이 가려져 있을 때는 전환 효과 없이 바로 그려요 (빈 화면 방지)
+    if (navigating && lastHash && !document.hidden && dir !== 'fade' && document.startViewTransition && !reduceMotion()) {
       document.documentElement.dataset.dir = dir;
-      document.startViewTransition(paint);                     // 이전 화면과 새 화면이 부드럽게 겹쳐 넘어가요
+      let done = false;
+      const once = () => { if (!done) { done = true; paint(); } };
+      try { document.startViewTransition(once); } catch (e) { once(); }   // 이전 화면과 새 화면이 부드럽게 겹쳐 넘어가요
+      setTimeout(once, 400);                                   // 전환이 안 되면 0.4초 뒤에라도 꼭 그려요
     } else {
       paint();
       if (navigating && !reduceMotion()) { root.classList.remove('anim-fwd', 'anim-back', 'anim-fade'); void root.offsetWidth; root.classList.add('anim-' + dir); }
