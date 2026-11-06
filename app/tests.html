@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'">
+<title>실마리 규칙 시험</title>
+<style>
+  body{font:15px/1.6 system-ui,sans-serif;margin:24px;background:#fff;color:#101410}
+  .ok{color:#15803D}.bad{color:#B91C1C;font-weight:700}
+  h1{font-size:20px} code{background:#F6F7F5;padding:1px 4px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>실마리 규칙 시험</h1>
+<p id="sum">시험 중…</p>
+<ol id="out"></ol>
+<script src="js/config.js"></script>
+<script src="js/price.js"></script>
+<script src="js/routes.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/draft.js"></script>
+<script src="js/store.js"></script>
+<script>
+(function () {
+  const out = document.getElementById('out'); let pass = 0, fail = 0;
+  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function t(name, got, want) {
+    const ok = eq(got, want); ok ? pass++ : fail++;
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="${ok ? 'ok' : 'bad'}">${ok ? '통과' : '실패'}</span> ${name}` + (ok ? '' : ` — 기대 <code>${JSON.stringify(want)}</code>, 결과 <code>${JSON.stringify(got)}</code>`);
+    out.appendChild(li);
+  }
+  const P = S.price, Rt = S.routes, PL = S.planner, U = S.util;
+
+  // ---- 가격 T1~T6 (13번 9-8) ----
+  const base = { purchasePrice: 59000, category: 'electronics', ageBucket: '1y2y', usage: 'sometimes', defect: 'minor', components: 'partial' };
+  const row = c => [Math.round(c.mid * 100) / 100, c.low, c.high, c.start];
+  t('T1 59,000원 전자기기 1~2년 → 22,000~26,000', row(P.calc(base)), [23895, 22000, 26000, 24000]);
+  t('T2 산 지만 2~3년', row(P.calc(Object.assign({}, base, { ageBucket: '2y3y' }))), [19116, 17000, 21000, 19000]);
+  t('T3 의류 200,000원', row(P.calc({ purchasePrice: 200000, category: 'clothing', ageBucket: '2y3y', usage: 'often', defect: 'none', components: 'bodyOnly' })), [38760, 35000, 43000, 39000]);
+  t('T4 배터리 80~89%', row(P.calc({ purchasePrice: 500000, category: 'electronics', ageBucket: '1y2y', usage: 'likeNew', defect: 'none', components: 'full', hasBattery: true, battery: '80to89' })), [233887.5, 210000, 257000, 234000]);
+  t('T5 도서 20,000원', row(P.calc({ purchasePrice: 20000, category: 'books', ageBucket: 'lt6m', usage: 'sometimes', defect: 'minor', components: 'bodyOnly' })), [6412.5, 6000, 7000, 7000]);
+  t('T6 최소값 1,000원', row(P.calc({ purchasePrice: 3000, category: 'etc', ageBucket: 'gt3y', usage: 'often', defect: 'broken', components: 'bodyOnly' })), [272.53, 1000, 1000, 1000]);
+  const c1 = P.calc(base);
+  t('"왜 이 가격?" 단계를 곱하면 가운데 값', Math.round(c1.steps.reduce((a, s) => a * s.ratio, c1.purchase) * 100) / 100, Math.round(c1.mid * 100) / 100);
+  t('배터리 90% 이상이면 줄이 생기고 값은 같아요', [P.calc(Object.assign({}, base, { hasBattery: true, battery: 'ge90' })).steps.length, P.calc(Object.assign({}, base, { hasBattery: true, battery: 'ge90' })).low], [6, 22000]);
+  t('가구 비율 60%', P.calc({ purchasePrice: 100000, category: 'furniture', ageBucket: '1y2y', usage: 'sometimes', defect: 'none', components: 'partial' }).midRounded, 30000);
+
+  // ---- 시세 비교 (9-6) ----
+  t('시세 3개 가운데 값', P.marketMid([30000, 25000, 28000]), 28000);
+  t('시세 2개 평균', P.marketMid([20000, 25000]), 22500);
+  t('시세 범위 안', P.compare([23000, 24000, 25000], 22000, 26000).kind, 'within');
+  t('시세 위 (예시 25·28·30)', P.compare([25000, 28000, 30000], 22000, 26000).text, '시세가 추천보다 높아요. 상태가 좋거나 구성품이 많다면 시세 쪽으로 올려도 돼요.');
+  t('시세 아래', P.compare([15000, 18000], 22000, 26000).kind, 'below');
+  t('시세 1개', P.compare([24000], 22000, 26000).extra, ['시세가 1개뿐이라 참고로만 봐요.']);
+  t('시세끼리 2배 차이', P.compare([10000, 25000], 22000, 26000).extra, ['적은 시세끼리 차이가 커요. 같은 모델·비슷한 상태인지 다시 확인해 보세요.']);
+  t('가격 내려 보기: 24,000 → 22,000', P.dropSuggestion(24000, 22000, []), 22000);
+  t('가격 내려 보기: 시세 최저가 더 높으면 그 값', P.dropSuggestion(24000, 22000, [23000, 28000]), 23000);
+  t('가격 내려 보기: 둘 다 높으면 ×0.95', P.dropSuggestion(20000, 22000, [25000]), 19000);
+
+  // ---- 길 고르기 (17-2) ----
+  const phone = { category: 'electronics', subtype: 'smartphone', defect: 'minor' };
+  t('아이폰 덜 귀찮게', Rt.suggest(phone, 'easy', 27, null).routes, ['buyback', 'sell', 'give']);
+  t('아이폰 더 받기', Rt.suggest(phone, 'more', 27, null).routes, ['sell', 'buyback', 'give']);
+  t('겨울 패딩 덜 귀찮게', Rt.suggest({ category: 'clothing', defect: 'none' }, 'easy', 27, null).routes, ['consign', 'pickup', 'give']);
+  t('책상 덜 귀찮게', Rt.suggest({ category: 'furniture', defect: 'minor' }, 'easy', 27, null).routes, ['give', 'dispose', 'sell']);
+  t('마감 6일: 직접 팔기가 맨 뒤', Rt.suggest(phone, 'easy', 6, null).routes, ['buyback', 'give', 'sell']);
+  t('기능 문제: 버리기가 두 번째', Rt.suggest({ category: 'living', defect: 'broken' }, 'easy', 27, null).routes, ['give', 'dispose', 'sell']);
+  t('기타 전자기기(흠 없음)는 버리기 안 보임', Rt.suggest({ category: 'electronics', subtype: 'electronics_other', defect: 'none' }, 'easy', 27, null).routes, ['sell', 'give']);
+  t('금액이 작아요(9,000원): 나눔이 앞으로', Rt.suggest({ category: 'living', defect: 'none' }, 'easy', 27, 9000).routes, ['give', 'sell']);
+
+  // ---- 계획 (17-2) ----
+  const today = '2026-11-06';
+  const ex = S.store.example(today);
+  const nm = Object.fromEntries(ex.items.map(i => [i.id, i.name]));
+  const byDate = tasks => { const m = {}; tasks.forEach(x => { (m[x.date] = m[x.date] || []).push((x.itemId ? nm[x.itemId] : '마감') + ':' + x.kind); }); return m; };
+  const plan = byDate(ex.tasks);
+  t('마감 12/3 = D-27', U.diffDays(today, ex.deadline), 27);
+  t('11/6 아이폰 견적 · 스피커 판매글', plan['2026-11-06'], ['아이폰 11 프로:apply_buyback', '블루투스 스피커:post_sale']);
+  t('11/7 빔프로젝터 판매글 · 패딩 위탁', plan['2026-11-07'], ['빔프로젝터:post_sale', '겨울 패딩:apply_consign']);
+  t('11/26 D-7 가격 내리기 ×2 · 책상 신청', plan['2026-11-26'], ['블루투스 스피커:drop_price', '빔프로젝터:drop_price', '책상:apply_dispose']);
+  t('11/29 D-4 나눔 바꾸기 ×2 · 전공책 나눔', plan['2026-11-29'], ['블루투스 스피커:switch_route', '빔프로젝터:switch_route', '전공책 3권:post_give']);
+  t('12/3 마감 날', plan['2026-12-03'], ['마감:deadline']);
+  t('11/5 끝낸 수거는 남아요', plan['2026-11-05'], ['헌옷 한 봉지:apply_pickup']);
+  const pr = PL.progress(ex);
+  t('홈: 8개 중 1개 · 길 정한 7개 · 전기장판', [pr.total, pr.finished, pr.routed, pr.unrouted.map(i => i.name)], [8, 1, 7, ['전기장판']]);
+  t('스피커 D-7 제안 22,000원', P.dropSuggestion(24000, P.calc(ex.items[1]).low, ex.items[1].marketPrices), 22000);
+
+  // 마감이 짧을 때 (8-4)
+  const sh = JSON.parse(JSON.stringify(ex)); sh.deadline = '2026-11-12';
+  sh.tasks = sh.tasks.filter(x => x.done);
+  const sp = byDate(PL.plan(sh, today));
+  t('짧은 마감 11/6: 아이폰 · 스피커 · 책상', sp['2026-11-06'], ['아이폰 11 프로:apply_buyback', '블루투스 스피커:post_sale', '책상:apply_dispose']);
+  t('짧은 마감 11/7: 빔프로젝터 · 패딩', sp['2026-11-07'], ['빔프로젝터:post_sale', '겨울 패딩:apply_consign']);
+  t('짧은 마감 11/9: 가격 내리기 ×2', sp['2026-11-09'], ['블루투스 스피커:drop_price', '빔프로젝터:drop_price']);
+  t('짧은 마감 11/10: 나눔 바꾸기 ×2 (D-2)', sp['2026-11-10'], ['블루투스 스피커:switch_route', '빔프로젝터:switch_route']);
+
+  // 다시 짜기: 사용자가 바꾼 날짜는 그대로
+  const ed = JSON.parse(JSON.stringify(ex));
+  const tk = ed.tasks.find(x => x.kind === 'apply_consign'); tk.date = '2026-11-15'; tk.userEdited = true;
+  t('사용자가 바꾼 날짜는 다시 짜도 그대로', PL.plan(ed, today).find(x => x.kind === 'apply_consign').date, '2026-11-15');
+  const fin = JSON.parse(JSON.stringify(ex)); const ft = fin.tasks.find(x => x.kind === 'apply_buyback'); ft.done = true; ft.doneAt = today;
+  t('오늘 일을 끝내도 내일 일이 당겨오지 않아요', PL.plan(fin, today).find(x => x.itemId === 'ex3' && x.kind === 'post_sale').date, '2026-11-07');
+  const done = JSON.parse(JSON.stringify(ex)); done.items[1].state = 'done';
+  t('끝낸 물건의 남은 할 일은 지워져요', PL.plan(done, today).filter(x => x.itemId === 'ex2').length, 0);
+
+  // ---- 글 ----
+  const spk = Object.assign({}, ex.items[1]);
+  t('판매글 제목', S.draft.sale(spk).title, '블루투스 스피커 판매해요 (가끔 사용)');
+  t('판매글 가격 줄', S.draft.sale(spk).body.includes('가격은 24,000원이에요.'), true);
+  t('판매글에 연락처 칸 없음', /010|@|주소/.test(S.draft.sale(spk).body), false);
+  t('나눔 글 제목', S.draft.give(ex.items[5]).title, '전공책 3권 나눔해요');
+  t('조사: 나눔을 · 스피커를 · 바로 매입으로', [U.josa.eul('나눔'), U.josa.eul('스피커'), U.josa.ro('바로 매입'), U.josa.ro('직접 팔기')], ['나눔을', '스피커를', '바로 매입으로', '직접 팔기로']);
+
+  document.getElementById('sum').innerHTML = fail ? `<b class="bad">${fail}개 실패</b> · ${pass}개 통과` : `<b class="ok">모두 통과 (${pass}개)</b>`;
+  document.title = fail ? '실패 ' + fail : '통과 ' + pass;
+})();
+</script>
+</body>
+</html>
