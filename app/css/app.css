@@ -559,3 +559,71 @@ h1.big { font-size: 25px; line-height: 1.34; }
   h1.mid { font-size: 22px; }
 }
 @media (max-height: 660px) { .draftbox { padding-bottom: 12px; } }
+
+/* ================= 떠 있는 유리 막대 다듬기 (11/7) =================
+   원칙: 유리는 탭 바와 + 버튼에만. 모서리는 탭 바(캡슐)에 맞춰 같은 중심으로.
+   - 누르는 것(버튼·고르기·칸·알약) = 캡슐
+   - 담는 것(카드) = 큰 둥근 모서리 --r-card, 그 안의 작은 상자 = --r-in (카드 둥글기 − 안쪽 여백)
+   - 아래로 스크롤하면 탭 바가 작아지고, 위로 올리면 다시 커져요 */
+:root { --r-cap: 999px; --r-card: 26px; --r-in: 14px; --r-field: 18px; }
+
+/* 1) 유리: 진짜로 비치게 (흐림 + 채도), 위쪽에 얇은 빛 */
+:root { --glass: rgba(255,255,255,.66); --glass-line: rgba(255,255,255,.75); --glass-edge: rgba(16,20,16,.10); --glass-hi: rgba(255,255,255,.55); --pill-on: rgba(16,20,16,.075); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --glass: rgba(36,43,38,.62); --glass-line: rgba(255,255,255,.12); --glass-edge: rgba(0,0,0,.45); --glass-hi: rgba(255,255,255,.08); --pill-on: rgba(255,255,255,.13); } }
+:root[data-theme="dark"] { --glass: rgba(36,43,38,.62); --glass-line: rgba(255,255,255,.12); --glass-edge: rgba(0,0,0,.45); --glass-hi: rgba(255,255,255,.08); --pill-on: rgba(255,255,255,.13); }
+.tabbar, .fab {
+  background: var(--glass); border: 1px solid var(--glass-line);
+  -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%);
+  box-shadow: 0 0 0 .5px var(--glass-edge), 0 12px 32px rgba(16,20,16,.16), 0 2px 8px rgba(16,20,16,.06), inset 0 1px 0 var(--glass-hi); }
+/* 막대 뒤: 내용과 막대를 나누는 옅은 바닥 그림자 (유리 아님) */
+.tabdock::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 120px; z-index: -1; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--bg) 62%, transparent)); }
+/* 유리를 못 그리는 브라우저, '투명도 줄이기'를 켠 사람, '대비 높이기'를 켠 사람: 불투명하게 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .tabbar, .fab { background: var(--surface); } }
+@media (prefers-reduced-transparency: reduce) {
+  .tabbar, .fab { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--line); }
+  .tabdock::before { background: linear-gradient(to bottom, transparent, var(--bg) 60%); }
+}
+@media (prefers-contrast: more) { .tabbar, .fab { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--ink-3); } }
+
+/* 2) 탭 바 크기는 변수로 (작아질 때 함께 바뀌어요) */
+.tabdock { --tw: 78px; --th: 62px; --fab: 54px; }
+.tabbar { height: var(--th); grid-template-columns: repeat(3, var(--tw)); border-radius: var(--r-cap); }
+.tabbar a { height: calc(var(--th) - 10px); border-radius: var(--r-cap); overflow: hidden; }
+.tabbar a span { display: block; line-height: 14px; max-height: 14px; }
+.tab-thumb { width: var(--tw); border-radius: var(--r-cap); transform: translateX(calc(var(--i, 0) * var(--tw))); }
+.fab { width: var(--fab); height: var(--fab); border-radius: var(--r-cap); }
+.tabbar, .fab, .tabbar a, .tab-thumb, .tabbar a svg, .tabbar a span {
+  transition: height .32s cubic-bezier(.3,.8,.2,1), width .32s cubic-bezier(.3,.8,.2,1), grid-template-columns .32s cubic-bezier(.3,.8,.2,1),
+    transform .26s cubic-bezier(.3,.8,.2,1), max-height .26s ease, opacity .2s ease, color .2s ease, box-shadow .22s ease; }
+/* 아래로 스크롤 → 작게: 글자는 숨기고 아이콘만 */
+.tabdock.mini { --tw: 56px; --th: 48px; --fab: 46px; }
+.tabdock.mini .tabbar a span { max-height: 0; opacity: 0; }
+.tabdock.mini .tabbar a svg { width: 21px; height: 21px; }
+.tabdock.mini .fab svg { width: 21px; height: 21px; }
+
+/* 3) 모서리: 누르는 것은 캡슐 */
+.btn, .btn.soft, .addrow .btn, .addrow .input, .svc .open, .pill, .choice, .choice.chip2, .input, .datebtn,
+.iconbtn, .seg, .seg .seg-thumb, .seg button, .mchip, .toast, .pastrow, .stepline .on { border-radius: var(--r-cap); }
+.btn.soft.wide { border-radius: var(--r-field); }        /* 두 줄이 될 수 있는 버튼은 너무 둥글지 않게 */
+textarea.input { border-radius: var(--r-field); }
+.seg { padding: 4px; }
+/* 담는 것은 큰 모서리 */
+.card, .card.gray, .card.lined, .rcard, .svc, .setcard, .draftbox, .pricerow { border-radius: var(--r-card); }
+.rcard.mini { border-radius: 22px; }
+dialog { border-radius: 30px; }
+dialog .btn { border-radius: var(--r-cap); }
+/* 카드 안의 작은 상자 = 카드 둥글기 − 안쪽 여백 (같은 중심) */
+.grid3 div, .why, .infobox, .band, .steps2 div, .status, .setrow2 { border-radius: var(--r-in); }
+.setrow2 + .setrow2 { border-radius: 0; }
+.setcard .datebtn, .setcard .pill, .setcard .seg { border-radius: var(--r-cap); }
+.choice.chip2, .choice.chip2[aria-pressed="true"] { padding: 0 10px 0 14px; gap: 7px; }
+.choice.chip2 { white-space: nowrap; letter-spacing: -.2px; }
+.pricerow { padding: 0 18px; }
+
+/* 4) 머리: 탭 화면 제목은 모두 같은 크기로 */
+.tabhead .name { font-size: 22px; font-weight: 700; letter-spacing: -.4px; }
+.iconbtn:hover { background: var(--line-soft); }
+
+/* 알림은 탭 바 위에, 캡슐로 */
+.toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 90px); padding-left: 20px; }

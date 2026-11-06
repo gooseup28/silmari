@@ -927,11 +927,23 @@
   const TAB_IDX = { '#/home': 0, '#/plan': 1, '#/records': 2 };
   function setDock(h) {
     const dock = $('#tabdock'), i = TAB_IDX[h];
+    if (dock.dataset.h !== h) { dock.classList.remove('mini'); dock.dataset.h = h; }   // 다른 화면으로 가면 다시 크게
     dock.hidden = i == null;
     if (i == null) return;
     dock.querySelector('.tabbar').style.setProperty('--i', i);
     $$('.tabbar a', dock).forEach((a, k) => { if (k === i) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   }
+
+  // 아래로 스크롤하면 탭 바가 작아지고(아이콘만), 위로 올리거나 맨 위로 오면 다시 커져요
+  let lastY = 0;
+  window.addEventListener('scroll', () => {
+    const dock = $('#tabdock'), y = window.scrollY, dy = y - lastY;
+    if (!dock || dock.hidden) { lastY = y; return; }
+    if (y < 40) dock.classList.remove('mini');
+    else if (dy > 6) dock.classList.add('mini');
+    else if (dy < -6) dock.classList.remove('mini');
+    if (Math.abs(dy) > 6 || y < 40) lastY = y;
+  }, { passive: true });
 
   // 스타일 속성 없이 값 넣기 (CSP: 인라인 스타일 금지)
   function decorate(root) {
